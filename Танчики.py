@@ -6,6 +6,37 @@ import random
 FPS = 30
 
 
+class Button(pygame.sprite.Sprite):
+    def __init__(self, x, y, w, h, text, activiti=False, fun=None):
+        super().__init__(button_group, all_sprites)
+        self.image = pygame.Surface((w, h),
+                                    pygame.SRCALPHA, 32)
+        if activiti:
+            pygame.draw.rect(self.image, (255, 0, 0), (0, 0, w, h), 0)
+            self.fun = fun
+        else:
+            pygame.draw.rect(self.image, (75, 75, 75), (0, 0, w, h), 0)
+            self.fun = None
+        self.rect = pygame.Rect(x, y, w, h)
+        font = pygame.font.Font(None, 30)
+        string_rendered = font.render(text, True, pygame.Color(255, 255, 255))
+        intro_rect = string_rendered.get_rect()
+        intro_rect.centery = self.rect.centery + 10
+        intro_rect.centerx = self.rect.centerx
+        screen.blit(self.image, (x, y))
+        screen.blit(string_rendered, (x, y))
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+
+    def update(self, *args, **kwargs):
+        if (args[0][0] >= self.x or args[0][0] <= self.x + self.w) and \
+                (args[0][1] >= self.y or args[0][1] <= self.y + self.h):
+            if self.fun is not None:
+                args[0][2] = self.fun
+
+
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(tiles_group, all_sprites)
@@ -68,6 +99,7 @@ class Player(pygame.sprite.Sprite):
 
     def update(self, *args, **kwargs):
         global life_player
+        event = args[0]
         if event.key == pygame.K_LEFT:
             self.image = pygame.transform.rotate(self.image, 45)
             self.position += 1
@@ -213,17 +245,8 @@ def generate_level(level):
 
 
 def start_screen():
-    intro_text = ["Танки", "",
-                  "Правила игры",
-                  "Движение: стрелочки,",
-                  "Стрельба: пробел,",
-                  "Цель : уничтожить бункер противника"
-                  " и забрать пакет данных",
-                  '*Вы выезжаете из ангара, в нем вы можете',
-                  'заправиться, пополнить боезопас и отремонтироваться,',
-                  'сюда же нужно доставить пакет данных']
-    intro_text = ["Танки", "",
-                  "", ]
+    intro_text = ["Танки", "", "", "", "",
+                  "Нажмите любую клавишу для продолжения"]
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 30)
@@ -249,7 +272,72 @@ def start_screen():
 
 
 def regulations_screen():
-    pass
+    intro_text = ["Танки", "",
+                  "Правила игры",
+                  "Движение: стрелочки,",
+                  "Стрельба: пробел,",
+                  "Цель : уничтожить бункер противника"
+                  " и забрать пакет данных",
+                  '*Вы выезжаете из ангара, в нем вы можете',
+                  'заправиться, пополнить боезопас и отремонтироваться,',
+                  'сюда же нужно доставить пакет данных',
+                  "Нажмите любую клавишу для продолжения"]
+    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 30)
+    text_coord = 50
+    for line in intro_text:
+        string_rendered = font.render(line, True, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 10
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                return
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def start_play_screen():
+    image = pygame.Surface((WIDTH, HEIGHT),
+                           pygame.SRCALPHA, 32)
+    pygame.draw.rect(image, (0, 0, 0), (0, 0, WIDTH, HEIGHT), 0)
+    screen.blit(image, (0, 0))
+    button_coord = 100
+    x = 100
+    button_width = button_height = 50
+    sp_text_button = ['Играть', 'Результаты', 'Выйти']
+    sp_fun_button = [level_choice, record, terminate]
+    for i in range(len(sp_text_button)):
+        Button(x, button_coord, button_width, button_height, sp_text_button[i], activiti=True, fun=sp_fun_button[i])
+        button_coord += 10
+        button_coord += 50
+
+    flag_mouse = False
+    x = y = 0
+    fun = None
+    sp = [x, y, fun]
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                flag_mouse = True
+                x, y = event.pos
+            if event.type == pygame.MOUSEBUTTONUP:
+                if flag_mouse:
+                    button_group.update(sp)
+                    return sp[2]
+        pygame.display.flip()
+        clock.tick(FPS)
 
 
 tile_images = {'wall': load_image('box.png'),
@@ -258,42 +346,52 @@ tile_width = tile_height = 50
 sp_level = []
 if __name__ == '__main__':
     pygame.init()
-    size = WIDTH, HEIGHT = 750, 750
+    pygame.mixer.init()
+    sound_war = pygame.mixer.Sound('data\\arthur-vyncke-black-sails.mp3')
+    sound_peace = pygame.mixer.Sound('data\\Ekshen_-_Prost_ekshen_(iPleer.com).mp3')
+    # sound_pleace
+    size = WIDTH, HEIGHT = 800, 800
     screen = pygame.display.set_mode(size)
-    start_screen()
-    regulations_screen()
-    running = True
     screen.fill((125, 125, 125))
+    running = True
+    player = None
+    ind_level = 0
+    '''screen1 = pygame.Surface(screen.get_size())
+    screen1.fill((0, 0, 0))'''
+    name_level = sp_level[ind_level]
+    level = load_level(name_level)
+    generate_level(level)
+    life_player = 3
+    clock = pygame.time.Clock()
+    button_group = pygame.sprite.Group()
     all_sprites = pygame.sprite.Group()
     tiles_group = pygame.sprite.Group()
     wall_group = pygame.sprite.Group()
     inter_group = pygame.sprite.Group()
     player_group = pygame.sprite.Group()
-    player = None
-    '''screen1 = pygame.Surface(screen.get_size())
-    screen1.fill((0, 0, 0))'''
-    clock = pygame.time.Clock()
-    for name_level in sp_level:
-        level = load_level(name_level)
-        generate_level(level)
-        life_player = 3
-        while running:
-            flag = True
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    terminate()
-                if event.type == pygame.KEYDOWN:
-                    player_group.update()
-                    flag = False
-            'пуля_гроуп.update()'
-            if flag:
+    start_screen()
+    regulations_screen()
+    fun = start_play_screen()
+    while running:
+        fun = fun()
+        '''flag = True
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN:
                 player_group.update()
-            inter_group.update()
-            'gun_group.update()'
-            all_sprites.draw()
-            screen.fill((125, 125, 125))
-            pygame.display.flip()
+                flag = False
+        'пуля_гроуп.update()'
+        if flag:
+            player_group.update()
+        inter_group.update()
+        'gun_group.update()'
+        all_sprites.draw()
+        screen.fill((125, 125, 125))
+        pygame.display.flip()'''
+
+
 '''Идея реализации сохранения запомнить индекс уровня в списке
 подумать над минами
 отправлять в классы списки групп спрайтов
-нужно 2 изображения бункеров и пушек(иначе -- переделать код)'''
+Отправлять из функций отображения игры функцию следующего окна'''
