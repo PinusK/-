@@ -79,54 +79,60 @@ class Bullet(pygame.sprite.Sprite):
         super().__init__(bullet_group, all_sprites)
         self.hunter = hunter
         self.image = tile_images[tile_type]
+        sub_x = 0
+        sub_y = 0
         if ind == 0:
             self.vx = 0
             self.vy = -v
             self.image = pygame.transform.rotate(self.image, 0)
-            self.rect = self.image.get_rect().move(pos_x, pos_y)
+            sub_x = self.image.get_rect().w // 2
         elif ind == 1:
             self.vx = -int(math.sqrt(v ** 2 // 2))
             self.vy = -int(math.sqrt(v ** 2 // 2))
-            self.rect = self.image.get_rect().move(pos_x - 25, pos_y)
         elif ind == 2:
             self.vx = -v
             self.vy = 0
             self.image = pygame.transform.rotate(self.image, 90)
-            self.rect = self.image.get_rect().move(pos_x - 25, pos_y + 25)
+            sub_y = self.image.get_rect().h // 2
         elif ind == 3:
             self.vx = -int(math.sqrt(v ** 2 // 2))
             self.vy = int(math.sqrt(v ** 2 // 2))
-            self.rect = self.image.get_rect().move(pos_x - 25, pos_y + 50)
         elif ind == 4:
             self.vx = 0
             self.vy = v
             self.image = pygame.transform.rotate(self.image, 90)
             self.image = pygame.transform.rotate(self.image, 90)
-            self.rect = self.image.get_rect().move(pos_x, pos_y + 50)
+            sub_x = self.image.get_rect().w // 2
         elif ind == 5:
             self.vx = int(math.sqrt(v ** 2 // 2))
             self.vy = int(math.sqrt(v ** 2 // 2))
-            self.rect = self.image.get_rect().move(pos_x + 25, pos_y + 50)
         elif ind == 6:
             self.vx = v
             self.vy = 0
             self.image = pygame.transform.rotate(self.image, -90)
-            self.rect = self.image.get_rect().move(pos_x + 25, pos_y + 25)
+            sub_y = self.image.get_rect().h // 2
         elif ind == 7:
             self.vx = int(math.sqrt(v ** 2 // 2))
             self.vy = -int(math.sqrt(v ** 2 // 2))
-            self.rect = self.image.get_rect().move(pos_x + 50, pos_y)
+        self.rect = self.image.get_rect().move(pos_x - sub_x, pos_y - sub_y)
 
     def update(self, *args, **kwargs):
         self.rect = self.rect.move(self.vx, self.vy)
         if pygame.sprite.spritecollideany(self, inter_group):
             if pygame.sprite.spritecollideany(self, inter_group) != self.hunter:
                 self.kill()
+                if not channel1.get_busy():
+                    channel1.play(sound_explosion)
                 hp_down(pygame.sprite.spritecollideany(self, inter_group))
         elif pygame.sprite.spritecollideany(self, player_group):
-            self.kill()
-            hp_down(pygame.sprite.spritecollideany(self, player_group))
+            if pygame.sprite.spritecollideany(self, player_group) != self.hunter:
+                if not channel1.get_busy():
+                    channel1.play(sound_explosion)
+                self.kill()
+                hp_down(pygame.sprite.spritecollideany(self, player_group))
         if pygame.sprite.spritecollideany(self, wall_group):
+            if not channel1.get_busy():
+                channel1.play(sound_explosion)
             self.kill()
 
 
@@ -139,11 +145,6 @@ class InterObject(pygame.sprite.Sprite):
             tile_width * pos_x, tile_height * pos_y)
         self.hp = 3
         self.points_kill = 500
-
-    '''def update(self, *args, **kwargs):
-        if self.hp == 0:
-            self.image = tile_images[self.tile_type][1]
-            self.remove(inter_group)'''
 
 
 class Gun(pygame.sprite.Sprite):
@@ -158,10 +159,12 @@ class Gun(pygame.sprite.Sprite):
         self.hp = 3
         self.x = tile_width * pos_x
         self.y = tile_height * pos_y
-        self.pos_0 = (self.x + 25, self.y)
-        self.pos_6 = (self.x + 50, self.y + 25)
-        self.pos_4 = (self.x + 25, self.y + 50)
-        self.pos_2 = (self.x, self.y + 25)
+        self.w = self.rect.w
+        self.h = self.rect.h
+        self.pos_0 = (self.x + self.w // 2, self.y)
+        self.pos_6 = (self.x + self.w, self.y + self.h // 2)
+        self.pos_4 = (self.x + self.w // 2, self.y + self.h)
+        self.pos_2 = (self.x, self.y + self.h // 2)
         self.data = data
         self.points_kill = 1000
 
@@ -180,7 +183,8 @@ class Gun(pygame.sprite.Sprite):
         self.ch_shot -= 1
         if self.ch_shot == 0:
             self.ch_shot = 100
-            Bullet('rocket', self.x + tile_width // 2, self.y, 10, pos[-1], self)
+            Bullet('rocket', self.x + self.w // 2,
+                   self.y + self.h // 2, 10, pos[-1], self)
 
 
 class Bunker(pygame.sprite.Sprite):
@@ -190,19 +194,21 @@ class Bunker(pygame.sprite.Sprite):
         self.image = tile_images[self.tile_type][0]
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
-        self.data = data
         self.ch_shot = 100
         self.hp = 3
         self.x = tile_width * pos_x
         self.y = tile_height * pos_y
+        self.w = self.rect.w
+        self.h = self.rect.h
         self.pos_1 = (self.x, self.y)
-        self.pos_0 = (self.x + 25, self.y)
-        self.pos_7 = (self.x + 50, self.y)
-        self.pos_6 = (self.x + 50, self.y + 25)
-        self.pos_5 = (self.x + 50, self.y + 50)
-        self.pos_4 = (self.x + 25, self.y + 50)
-        self.pos_3 = (self.x, self.y + 50)
-        self.pos_2 = (self.x, self.y + 25)
+        self.pos_0 = (self.x + self.w // 2, self.y)
+        self.pos_7 = (self.x + self.w, self.y)
+        self.pos_6 = (self.x + self.w, self.y + self.h // 2)
+        self.pos_5 = (self.x + self.w, self.y + self.h)
+        self.pos_4 = (self.x + self.w // 2, self.y + self.h)
+        self.pos_3 = (self.x, self.y + self.h)
+        self.pos_2 = (self.x, self.y + self.h // 2)
+        self.data = data
         self.points_kill = 1500
 
     def update(self, *args, **kwargs):
@@ -221,7 +227,8 @@ class Bunker(pygame.sprite.Sprite):
         self.ch_shot -= 1
         if self.ch_shot == 0:
             self.ch_shot = 100
-            Bullet('snaryad', self.x + 25, self.y, 10, pos[-1], self)
+            Bullet('snaryad', self.x + self.w // 2,
+                   self.y + self.h // 2, 10, pos[-1], self)
 
 
 class Data(pygame.sprite.Sprite):
@@ -303,8 +310,8 @@ class Player(pygame.sprite.Sprite):
                 self.rect = self.rect.move(-self.vx, -self.vy)
             if self.flag1:
                 self.rect = self.rect.move(self.vx, self.vy)
-        self.nx = self.rect.x + tile_width // 2.5
-        self.ny = self.rect.y - tile_height // 2.5
+        self.nx = self.rect.x + tile_width // 2
+        self.ny = self.rect.y + tile_height // 2
         if self.hp == 0:
             life_player -= 1
             if self.flag_data:
@@ -365,6 +372,7 @@ def hp_down(self):
 
 
 def terminate():
+    pygame.mixer.quit()
     pygame.quit()
     sys.exit()
 
@@ -393,9 +401,11 @@ def load_text_file(filename):
 def write_text_record(record, flag=False):
     with open('data/Record.txt', 'r') as textFile:
         text = [line.strip() for line in textFile]
-    text[ind_level + 2].split()[-1] = record
+    if int(text[ind_level + 2].split()[1]) < int(record):
+        text[ind_level + 2] = str(text[ind_level + 2].split()[0]) + '    ' + str(record)
     if flag:
-        text[0].split()[-1] = str(int(text[0].split()[-1]) + 1)
+        if ind_level + 1 == int(text[0].split()[-1]):
+            text[0] = text[0].split()[0] + ' ' + str(int(text[0].split()[-1]) + 1)
     text = '\n'.join(text)
     with open('data/Record.txt', 'w') as write_text:
         write_text.write(text)
@@ -878,6 +888,7 @@ if __name__ == '__main__':
     pygame.mixer.init()
     sound_war = pygame.mixer.Sound('data\\arthur-vyncke-black-sails.mp3')
     sound_peace = pygame.mixer.Sound('data\\Ekshen_-_Prost_ekshen_(iPleer.com).mp3')
+    sound_explosion = pygame.mixer.Sound('data\\explosion.mp3')
     channel1 = pygame.mixer.Channel(1)
     channel2 = pygame.mixer.Channel(2)
     channel1.play(sound_peace, -1)
@@ -894,13 +905,10 @@ if __name__ == '__main__':
                    'snaryad': load_image('snaryad.png'),
                    'angar': load_image('angar.png'),
                    'data' : load_image('data.png')}
-    # screen_rect = (0, 0, WIDTH, HEIGHT)
     screen.fill((125, 125, 125))
     running = True
     player = None
     ind_level = 0
-    '''screen1 = pygame.Surface(screen.get_size())
-    screen1.fill((0, 0, 0))'''
     life_player = 3
     clock = pygame.time.Clock()
     button_group = pygame.sprite.Group()
