@@ -8,7 +8,7 @@ FPS = 30
 
 class Button(pygame.sprite.Sprite):
     def __init__(self, x, y, w, h, text, activiti=False, fun=None):
-        super().__init__(button_group, all_sprites)
+        super().__init__(button_group)
         if len(text) > 3:
             w = w * 2.5
         self.image = pygame.Surface((w, h),
@@ -23,10 +23,12 @@ class Button(pygame.sprite.Sprite):
         font = pygame.font.Font(None, 32)
         string_rendered = font.render(text, True, pygame.Color(255, 255, 255))
         intro_rect = string_rendered.get_rect()
-        intro_rect.centery = self.rect.centery + 10
+        intro_rect.centery = self.rect.centery
         intro_rect.centerx = self.rect.centerx
         screen.blit(self.image, (x, y))
-        screen.blit(string_rendered, (x, y))
+        screen.blit(string_rendered, intro_rect)
+        self.string_rendered = string_rendered
+        self.intro_rect = intro_rect
         self.text = text
         self.x = x
         self.y = y
@@ -40,8 +42,12 @@ class Button(pygame.sprite.Sprite):
             if self.fun is not None:
                 args[0][2] = self.fun
             if self.fun == start_mission:
-                ind_level = int(self.text) - 1
+                if self.text.isdigit():
+                    ind_level = int(self.text) - 1
                 args[0][2] = self.fun
+
+    def blit_text(self):
+        screen.blit(self.string_rendered, self.intro_rect)
 
 
 class Tile(pygame.sprite.Sprite):
@@ -50,6 +56,13 @@ class Tile(pygame.sprite.Sprite):
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
+
+
+class TileTank(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(tiles_group, all_sprites)
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect().move(pos_x, pos_y)
 
 
 class Wall(pygame.sprite.Sprite):
@@ -112,7 +125,7 @@ class Bullet(pygame.sprite.Sprite):
                 hp_down(pygame.sprite.spritecollideany(self, inter_group))
         elif pygame.sprite.spritecollideany(self, player_group):
             self.kill()
-            hp_down(pygame.sprite.spritecollideany(self,player_group))
+            hp_down(pygame.sprite.spritecollideany(self, player_group))
         if pygame.sprite.spritecollideany(self, wall_group):
             self.kill()
 
@@ -125,17 +138,16 @@ class InterObject(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.hp = 3
+        self.points_kill = 500
 
-    def update(self, *args, **kwargs):
-        print(2)
+    '''def update(self, *args, **kwargs):
         if self.hp == 0:
-            print(1)
             self.image = tile_images[self.tile_type][1]
-            self.remove(inter_group)
+            self.remove(inter_group)'''
 
 
 class Gun(pygame.sprite.Sprite):
-    def __init__(self, tile_type, pos_x, pos_y):
+    def __init__(self, tile_type, pos_x, pos_y, data=False):
         super().__init__(all_sprites, bunker_group, inter_group)
         self.tile_type = tile_type
         self.image2 = tile_images[self.tile_type][0]
@@ -150,6 +162,8 @@ class Gun(pygame.sprite.Sprite):
         self.pos_6 = (self.x + 50, self.y + 25)
         self.pos_4 = (self.x + 25, self.y + 50)
         self.pos_2 = (self.x, self.y + 25)
+        self.data = data
+        self.points_kill = 1000
 
     def update(self, *args, **kwargs):
         x = args[0]
@@ -166,19 +180,17 @@ class Gun(pygame.sprite.Sprite):
         self.ch_shot -= 1
         if self.ch_shot == 0:
             self.ch_shot = 100
-            Bullet('rocket', self.x + 25, self.y, 10, pos[-1], self)
-        if self.hp == 0:
-            self.image = tile_images[self.tile_type][1]
-            self.remove(bunker_group, inter_group)
+            Bullet('rocket', self.x + tile_width // 2, self.y, 10, pos[-1], self)
 
 
 class Bunker(pygame.sprite.Sprite):
-    def __init__(self, tile_type, pos_x, pos_y):
+    def __init__(self, tile_type, pos_x, pos_y, data=False):
         super().__init__(all_sprites, bunker_group, inter_group)
         self.tile_type = tile_type
         self.image = tile_images[self.tile_type][0]
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
+        self.data = data
         self.ch_shot = 100
         self.hp = 3
         self.x = tile_width * pos_x
@@ -191,6 +203,7 @@ class Bunker(pygame.sprite.Sprite):
         self.pos_4 = (self.x + 25, self.y + 50)
         self.pos_3 = (self.x, self.y + 50)
         self.pos_2 = (self.x, self.y + 25)
+        self.points_kill = 1500
 
     def update(self, *args, **kwargs):
         x = args[0]
@@ -209,9 +222,13 @@ class Bunker(pygame.sprite.Sprite):
         if self.ch_shot == 0:
             self.ch_shot = 100
             Bullet('snaryad', self.x + 25, self.y, 10, pos[-1], self)
-        if self.hp == 0:
-            self.image = tile_images[self.tile_type][1]
-            self.remove(bunker_group, inter_group)
+
+
+class Data(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(tiles_group, all_sprites, data_groop)
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect().move(pos_x, pos_y)
 
 
 class Player(pygame.sprite.Sprite):
@@ -221,6 +238,7 @@ class Player(pygame.sprite.Sprite):
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.player_life_portal(self.tile_type, self.pos_x, self.pos_y)
+        self.points = 0
 
     def update(self, *args, **kwargs):
         global life_player
@@ -229,7 +247,7 @@ class Player(pygame.sprite.Sprite):
             if event.key == pygame.K_SPACE:
                 if self.ch_shot == 0 and self.ammun != 0:
                     Bullet('rocket', self.nx, self.ny, 20, self.position, self)
-                    self.ch_shot = 40
+                    self.ch_shot = 30
                     self.ammun -= 1
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_UP:
@@ -245,7 +263,7 @@ class Player(pygame.sprite.Sprite):
                     self.rect = self.rect.move(self.vx, self.vy)
                     self.combus -= 0.1
                     self.flag = True
-                if pygame.sprite.spritecollideany(self, wall_group) or\
+                if pygame.sprite.spritecollideany(self, wall_group) or \
                         pygame.sprite.spritecollideany(self, inter_group):
                     if event.key == pygame.K_UP or self.flag:
                         self.rect = self.rect.move(-self.vx, -self.vy)
@@ -273,33 +291,44 @@ class Player(pygame.sprite.Sprite):
             elif self.position == 6:
                 self.vx = 2
                 self.vy = 0
-            self.nx = self.rect.x + tile_width // 3.5
-            self.ny = self.rect.y - tile_height // 3.5
         if self.flag:
             self.rect = self.rect.move(self.vx, self.vy)
+            self.combus -= 0.02
         if self.flag1:
             self.rect = self.rect.move(-self.vx, -self.vy)
-        if pygame.sprite.spritecollideany(self, wall_group) or\
+            self.combus -= 0.02
+        if pygame.sprite.spritecollideany(self, wall_group) or \
                 pygame.sprite.spritecollideany(self, inter_group):
             if self.flag:
                 self.rect = self.rect.move(-self.vx, -self.vy)
             if self.flag1:
                 self.rect = self.rect.move(self.vx, self.vy)
+        self.nx = self.rect.x + tile_width // 2.5
+        self.ny = self.rect.y - tile_height // 2.5
         if self.hp == 0:
             life_player -= 1
+            if self.flag_data:
+                Data('data', self.rect.x + tile_width / 4, self.rect.y + tile_height / 4)
+                self.flag_data = False
+            TileTank('skeleton_tank', self.rect.x, self.rect.y)
+            self.points -= 10000
             self.player_life_portal(self.tile_type, self.pos_x, self.pos_y)
         if self.ch_shot > 0:
             self.ch_shot -= 1
+        if pygame.sprite.spritecollideany(self, data_groop):
+            self.flag_data = True
+            data = pygame.sprite.spritecollideany(self, data_groop)
+            data.kill()
 
     def player_life_portal(self, tile_type, pos_x, pos_y):
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
-        print(self.rect)
         self.flag = False
         self.flag1 = False
-        self.ch_shot = 40
-        self.hp = 5
+        self.flag_data = False
+        self.ch_shot = 30
+        self.hp = 3
         self.combus = 100
         self.ammun = 20
         self.vx = 0
@@ -308,13 +337,31 @@ class Player(pygame.sprite.Sprite):
         self.ny = self.rect.y
         self.position = 0
 
+    def in_the_hangar(self):
+        if self.ammun < 20:
+            self.ammun += 1
+            self.points -= 500
+        if self.combus < 100:
+            self.combus += 0.2
+            self.points -= 10
+        if self.hp < 3:
+            self.hp += 1
+            self.points -= 100
+
 
 def hp_down(self):
-    self.hp -= 1
+    if self.hp > 0:
+        self.hp -= 1
     if self.hp == 0:
-        self.image = tile_images[self.tile_type][1]
-        self.remove(bunker_group, inter_group)
-
+        if self == player_group.sprites()[0]:
+            pass
+        else:
+            if self in bunker_group:
+                if self.data:
+                    Data('data', self.x + tile_width / 4, self.y + tile_height / 4)
+            self.image = tile_images[self.tile_type][1]
+            self.remove(bunker_group, inter_group)
+            player_group.sprites()[0].points += self.points_kill
 
 
 def terminate():
@@ -336,11 +383,22 @@ def load_level(filename):
 def load_text_file(filename):
     filename = "data/" + filename
     # читаем уровень, убирая символы перевода строки
-    with open(filename, 'r') as mapFile:
-        level_map = [line.strip() for line in mapFile]
+    with open(filename, 'r') as textFile:
+        text = [line.strip() for line in textFile]
     # и подсчитываем максимальную длину
     # дополняем каждую строку пустыми клетками ('.')
-    return level_map
+    return text
+
+
+def write_text_record(record, flag=False):
+    with open('data/Record.txt', 'r') as textFile:
+        text = [line.strip() for line in textFile]
+    text[ind_level + 2].split()[-1] = record
+    if flag:
+        text[0].split()[-1] = str(int(text[0].split()[-1]) + 1)
+    text = '\n'.join(text)
+    with open('data/Record.txt', 'w') as write_text:
+        write_text.write(text)
 
 
 def load_image(name, colorkey=None):
@@ -360,6 +418,7 @@ def load_image(name, colorkey=None):
 
 
 def generate_level(level):
+    global angar
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '.':
@@ -376,14 +435,17 @@ def generate_level(level):
             elif level[y][x] == 'B':
                 Tile('empty', x, y)
                 Bunker('bunker', x, y)
-            elif level[y][x] == '@':
+            elif level[y][x] == 'D':
                 Tile('empty', x, y)
+                Bunker('bunker', x, y, data=True)
+            elif level[y][x] == '@':
+                angar = Tile('angar', x, y)
                 Player('player', x, y)
     return
 
 
 def start_screen():
-    intro_text = ["Танки", "", "", "", "",
+    intro_text = ["                    ТАНКИ",
                   "Нажмите любую клавишу для продолжения"]
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
@@ -394,8 +456,8 @@ def start_screen():
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
-        intro_rect.x = 10
-        text_coord += intro_rect.height
+        intro_rect.x = 200
+        text_coord += 600
         screen.blit(string_rendered, intro_rect)
 
     while True:
@@ -403,21 +465,22 @@ def start_screen():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
+                    event.type == pygame.MOUSEBUTTONUP:
                 return
         pygame.display.flip()
         clock.tick(FPS)
 
 
 def regulations_screen():
-    intro_text = ["Правила игры",
+    intro_text = ["Правила игры:",
                   "Движение: стрелочки,",
-                  "Стрельба: пробел,",
-                  "Цель : уничтожить бункер противника"
+                  "Стрельба: пробел",
+                  "Пауза: ESC",
+                  "Цель:уничтожить бункер противника"
                   " и забрать пакет данных",
-                  '*Вы выезжаете из ангара, в нем вы можете',
+                  '*Вы выезжаете из Ремонтной зоны, в ней вы можете',
                   'заправиться, пополнить боезопас и отремонтироваться,',
-                  'сюда же нужно доставить пакет данных',
+                  'сюда же нужно доставить пакет данных', '', '', '', '',
                   "Нажмите любую клавишу для продолжения"]
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
@@ -437,28 +500,30 @@ def regulations_screen():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
+                    event.type == pygame.MOUSEBUTTONUP:
                 return
         pygame.display.flip()
         clock.tick(FPS)
 
 
 def record():
-    intro_text = load_text_file('record')[1:]
+    intro_text = load_text_file('Record.txt')[1:]
+    intro_text.insert(1, '')
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 30)
+    font = pygame.font.Font(None, 50)
     text_coord = 50
     for line in intro_text:
         string_rendered = font.render(line, True, pygame.Color('red'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
-        intro_rect.x = 10
+        intro_rect.x = 200
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
 
-    Button(200, 300, button_width, button_height, 'Назад', activiti=True, fun=start_play_screen)
+    Button(300, text_coord + 50, button_width / 1.5, button_height / 1.5,
+           'Назад', activiti=True, fun=start_play_screen)
     x = y = 0
     fun = None
     sp = [x, y, fun]
@@ -479,8 +544,8 @@ def record():
 def level_choice():
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    button_coord_y = 75
-    button_coord_x = 25
+    button_coord_y = 100
+    button_coord_x = 100
     line = 'Миссия'
     font = pygame.font.Font(None, 30)
     string_rendered = font.render(line, True, pygame.Color('red'))
@@ -496,19 +561,22 @@ def level_choice():
     for y in range(ln):
         for x in range(shag_x, ln):
             if int(sp_text_button[x]) <= max_level:
-                Button(button_coord_x, button_coord_y, button_width, button_height,
+                Button(button_coord_x, button_coord_y, button_width * 1.5, button_height * 1.5,
                        sp_text_button[x], activiti=True, fun=sp_fun_button[0])
-                button_coord_x += 75
+                button_coord_x += 75 * 1.5
             else:
-                Button(button_coord_x, button_coord_y, button_width, button_height,
+                Button(button_coord_x, button_coord_y, button_width * 1.5, button_height * 1.5,
                        sp_text_button[x], activiti=False, fun=None)
-                button_coord_x += 75
-            if x - shag_x == 9:
-                shag_x += 10
+                button_coord_x += 75 * 1.5
+            if x - shag_x == 4:
+                shag_x += 5
                 break
-        button_coord_y += 75
-        button_coord_x = 25
+        button_coord_y += 75 * 1.5
+        button_coord_x = 100
+        if shag_x == ln:
+            break
 
+    Button(300, button_coord_y, button_width / 1.5, button_height / 1.5, 'Назад', activiti=True, fun=start_play_screen)
     x = y = 0
     fun = None
     sp = [x, y, fun]
@@ -527,22 +595,29 @@ def level_choice():
 
 
 def start_play_screen():
+    channel2.stop()
+    if not channel1.get_busy():
+        channel1.play(sound_peace, -1)
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    button_coord = 100
-    x = 100
+    button_coord_y = 300
+    button_coord_x = 300
     sp_text_button = ['Играть', 'Результаты', 'Выйти']
     sp_fun_button = [level_choice, record, terminate]
     for i in range(len(sp_text_button)):
-        Button(x, button_coord, button_width, button_height, sp_text_button[i], activiti=True, fun=sp_fun_button[i])
-        button_coord += 10
-        button_coord += 50
+        Button(button_coord_x, button_coord_y, button_width * 1.5, button_height * 1.5,
+               sp_text_button[i], activiti=True, fun=sp_fun_button[i])
+        button_coord_y += 50 * 2
 
     x = y = 0
     fun = None
     sp = [x, y, fun]
+    flag = True
     while True:
         for event in pygame.event.get():
+            if flag:
+                flag = False
+                break
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.MOUSEBUTTONUP:
@@ -555,25 +630,231 @@ def start_play_screen():
         clock.tick(FPS)
 
 
-def start_mission():
-    channel1.stop()
-    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+def victory():
+    global life_player
+    channel2.stop()
+    channel1.play(sound_peace, -1)
+    fon = pygame.transform.scale(load_image('victory_game.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
+    intro_text = ["                    Победа", '', '',
+                  f'Ваши очки: {player_group.sprites()[0].points + 10000}', '', '',
+                  "Нажмите Enter для продолжения"]
+    font = pygame.font.Font(None, 30)
+    text_coord = 50
+    for line in intro_text:
+        string_rendered = font.render(line, True, pygame.Color('red'))
+        intro_rect = string_rendered.get_rect()
+        intro_rect.top = text_coord
+        intro_rect.x = 200
+        text_coord += 100
+        screen.blit(string_rendered, intro_rect)
+
+    write_text_record(player_group.sprites()[0].points + 10000, flag=True)
+    life_player = 3
+    button_group.empty()
+    all_sprites.empty()
+    tiles_group.empty()
+    wall_group.empty()
+    inter_group.empty()
+    player_group.empty()
+    bunker_group.empty()
+    bullet_group.empty()
+    data_groop.empty()
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_RETURN:
+                    return start_play_screen
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def over_game():
+    global life_player
+    channel2.stop()
+    channel1.play(sound_peace, -1)
+    fon = pygame.transform.scale(load_image('game_over.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    intro_text = ["                    Поражение", '', '',
+                  f'Ваши очки: {player_group.sprites()[0].points}', '', '',
+                  "Нажмите Enter для продолжения"]
+    font = pygame.font.Font(None, 30)
+    text_coord = 50
+    for line in intro_text:
+        string_rendered = font.render(line, True, pygame.Color('red'))
+        intro_rect = string_rendered.get_rect()
+        intro_rect.top = text_coord
+        intro_rect.x = 200
+        text_coord += 100
+        screen.blit(string_rendered, intro_rect)
+
+    write_text_record(player_group.sprites()[0].points)
+    life_player = 3
+    button_group.empty()
+    all_sprites.empty()
+    tiles_group.empty()
+    wall_group.empty()
+    inter_group.empty()
+    player_group.empty()
+    bunker_group.empty()
+    bullet_group.empty()
+    data_groop.empty()
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_RETURN:
+                    return start_play_screen
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def consol_game():
+    size_combus = (400, 8)
+    size_ammun = (400, 20)
+    size_life = (100, 10)
+    size_player_life = (200, 200)
+    image = pygame.transform.scale(load_image('panel.jpg'), (WIDTH, 200))
+    rect_image = image.get_rect().move(0, HEIGHT - 200)
+    screen.blit(image, rect_image)
+    # Топливо
+    combus = player_group.sprites()[0].combus / 100
+    image = pygame.Surface(size_combus,
+                           pygame.SRCALPHA, 32)
+    pygame.draw.rect(image, (255, 255, 0), (0, 0, size_combus[0] * combus, size_combus[1]))
+    pygame.draw.rect(image, (0, 0, 0), (size_combus[0] * combus, 0,
+                                        size_combus[0] - size_combus[0] * combus, size_combus[1]))
+    rect_image = image.get_rect().move(200, HEIGHT - 150)
+    screen.blit(image, rect_image)
+    # Патроны
+    image = pygame.Surface(size_ammun,
+                           pygame.SRCALPHA, 32)
+    ammun_ch = player_group.sprites()[0].ammun
+    for i in range(0, 400, 20):
+        image_cartridge = load_image('rocket.png')
+        rect_image = image_cartridge.get_rect().move(i, 0)
+        image.blit(image_cartridge, rect_image)
+        ammun_ch -= 1
+        if ammun_ch == 0:
+            rect_image = image.get_rect().move(200, HEIGHT - 130)
+            screen.blit(image, rect_image)
+            break
+    # Жизни Танка
+    image = pygame.Surface(size_life,
+                           pygame.SRCALPHA, 32)
+    pygame.draw.rect(image, (0, 0, 0), (0, 0, size_life[0] - 5, size_life[1]))
+    ch_hp = 0
+    ch_iter = 5
+    for i in range(3, size_life[0], 6):
+        if ch_hp == 0:
+            color = (255, 0, 0)
+        elif ch_hp == 1:
+            color = (255, 255, 0)
+        else:
+            color = (0, 255, 0)
+        if ch_iter == 0:
+            ch_iter = 5
+            ch_hp += 1
+        if ch_hp == player_group.sprites()[0].hp:
+            rect_image = image.get_rect().move(300, HEIGHT - 100)
+            screen.blit(image, rect_image)
+            break
+        pygame.draw.rect(image, color, (i, 0, 5, 10))
+        ch_iter -= 1
+    # Жизни Игрока
+    image = pygame.Surface(size_player_life,
+                           pygame.SRCALPHA, 32)
+    spek_y = 20
+    for i in range(0, life_player):
+        image_life = load_image('tank_player.png')
+        rect_image = image_life.get_rect()
+        rect_image.y = spek_y
+        spek_y += tile_height + 10
+        image.blit(image_life, rect_image)
+    rect_image = image.get_rect().move(50, HEIGHT - 200)
+    screen.blit(image, rect_image)
+
+    # Очки
+    line = f'{player_group.sprites()[0].points}'
+    font = pygame.font.Font(None, 30)
+    string_rendered = font.render(line, True, pygame.Color('red'))
+    intro_rect = string_rendered.get_rect()
+    intro_rect.top = HEIGHT - 75
+    intro_rect.x = 250
+    screen.blit(string_rendered, intro_rect)
+    # qwertyuiop
+    # сделаны игровые очки, музыка, игровой дисплей,
+
+
+def start_mission():
+    global life_player
+    channel1.stop()
+    if not channel2.get_busy():
+        channel2.play(sound_peace, -1)
     pygame.display.flip()
-    channel2.play(sound_war, -1)
     name_level = sp_level[ind_level]
     level = load_level(name_level)
     generate_level(level)
+
+    button_coord_y = HEIGHT - 175
+    button_coord_x = WIDTH - 175
+    sp_text_button = ['Начать занова', 'Выйти']
+    sp_fun_button = [start_mission, start_play_screen]
+    for i in range(len(sp_text_button)):
+        Button(button_coord_x, button_coord_y, button_width * 1.3, button_height * 1.3,
+               sp_text_button[i], activiti=True, fun=sp_fun_button[i])
+        button_coord_y += 75
+    mouse_x = mouse_y = 0
+    fun_button = None
+    sp_button = [mouse_x, mouse_y, fun_button]
+    stop_game = False
     while running:
         flag = True
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    stop_game = not stop_game
+                    break
+            if stop_game:
+                continue
             if event.type == pygame.KEYDOWN or \
                     event.type == pygame.KEYUP:
                 player_group.update(event)
                 flag = False
-        screen.fill((125, 125, 125))
+            if event.type == pygame.MOUSEBUTTONUP:
+                sp_button[0], sp_button[1] = event.pos
+                button_group.update(sp_button)
+                if sp_button[2] is not None:
+                    button_group.empty()
+                    life_player = 3
+                    button_group.empty()
+                    all_sprites.empty()
+                    tiles_group.empty()
+                    wall_group.empty()
+                    inter_group.empty()
+                    player_group.empty()
+                    bunker_group.empty()
+                    bullet_group.empty()
+                    data_groop.empty()
+                    return sp_button[2]
+        if stop_game:
+            continue
+        if life_player == 0:
+            life_player = 3
+            return over_game
+        if pygame.sprite.spritecollideany(angar, player_group):
+            if player_group.sprites()[0].flag_data:
+                return victory
+            else:
+                player_group.sprites()[0].in_the_hangar()
+        fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+        screen.blit(fon, (0, 0))
+        consol_game()
         bullet_group.update()
         if flag:
             player_group.update(None)
@@ -581,8 +862,11 @@ def start_mission():
         y = player_group.sprites()[0].rect.y + 25
         bunker_group.update(x, y)
         all_sprites.draw(screen)
-        bunker_group.draw(screen)
+        data_groop.draw(screen)
         player_group.draw(screen)
+        button_group.draw(screen)
+        for i in button_group.sprites():
+            i.blit_text()
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -605,8 +889,11 @@ if __name__ == '__main__':
                    'bunker': [load_image('bunker.png'), load_image('voronka.png')],
                    'inter_object': [load_image('dom.png'), load_image('destroir_dom.png')],
                    'player': load_image('tank_player.png'),
+                   'skeleton_tank': load_image('skeleton_tank.png'),
                    'rocket': load_image('rocket.png'),
-                   'snaryad': load_image('snaryad.png')}
+                   'snaryad': load_image('snaryad.png'),
+                   'angar': load_image('angar.png'),
+                   'data' : load_image('data.png')}
     # screen_rect = (0, 0, WIDTH, HEIGHT)
     screen.fill((125, 125, 125))
     running = True
@@ -624,6 +911,8 @@ if __name__ == '__main__':
     player_group = pygame.sprite.Group()
     bunker_group = pygame.sprite.Group()
     bullet_group = pygame.sprite.Group()
+    data_groop = pygame.sprite.Group()
+    angar = None
     start_screen()
     regulations_screen()
     fun = start_play_screen()
