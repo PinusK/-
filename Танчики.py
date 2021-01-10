@@ -433,7 +433,7 @@ def generate_level(level):
         for x in range(len(level[y])):
             if level[y][x] == '.':
                 Tile('empty', x, y)
-            elif level[y][x] == 'w':
+            elif level[y][x] == 'W':
                 Tile('empty', x, y)
                 Wall('wall', x, y)
             elif level[y][x] == 'O':
