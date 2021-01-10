@@ -436,7 +436,10 @@ def load_text_file(filename):
 def write_text_record(record, flag=False):
     with open('data/Record.txt', 'r') as textFile:
         text = [line.strip() for line in textFile]
-    if int(text[ind_level + 2].split()[1]) < abs(int(record)):
+    if int(text[ind_level + 2].split()[1]) == 0:
+        if int(text[ind_level + 2].split()[1]) < abs(int(record)):
+            text[ind_level + 2] = str(text[ind_level + 2].split()[0]) + '    ' + str(record)
+    if int(text[ind_level + 2].split()[1]) < int(record):
         text[ind_level + 2] = str(text[ind_level + 2].split()[0]) + '    ' + str(record)
     if flag:
         if ind_level + 1 == int(text[0].split()[-1]):
