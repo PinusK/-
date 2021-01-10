@@ -118,22 +118,33 @@ class Bullet(pygame.sprite.Sprite):
 
     def update(self, *args, **kwargs):
         self.rect = self.rect.move(self.vx, self.vy)
+        flag_explosion = False
         if pygame.sprite.spritecollideany(self, inter_group):
             if pygame.sprite.spritecollideany(self, inter_group) != self.hunter:
                 self.kill()
-                if not channel1.get_busy():
-                    channel1.play(sound_explosion)
+                flag_explosion = True
                 hp_down(pygame.sprite.spritecollideany(self, inter_group))
         elif pygame.sprite.spritecollideany(self, player_group):
             if pygame.sprite.spritecollideany(self, player_group) != self.hunter:
-                if not channel1.get_busy():
-                    channel1.play(sound_explosion)
+                flag_explosion = True
                 self.kill()
                 hp_down(pygame.sprite.spritecollideany(self, player_group))
         if pygame.sprite.spritecollideany(self, wall_group):
-            if not channel1.get_busy():
-                channel1.play(sound_explosion)
+            flag_explosion = True
             self.kill()
+        if flag_explosion:
+            if not channel3.get_busy():
+                channel3.play(sound_explosion)
+            elif not channel4.get_busy():
+                channel4.play(sound_explosion)
+            elif not channel5.get_busy():
+                channel5.play(sound_explosion)
+            elif not channel6.get_busy():
+                channel6.play(sound_explosion)
+            elif not channel7.get_busy():
+                channel7.play(sound_explosion)
+            elif not channel8.get_busy():
+                channel8.play(sound_explosion)
 
 
 class InterObject(pygame.sprite.Sprite):
@@ -152,6 +163,7 @@ class Gun(pygame.sprite.Sprite):
         super().__init__(all_sprites, bunker_group, inter_group)
         self.tile_type = tile_type
         self.image2 = tile_images[self.tile_type][0]
+        self.image = tile_images[self.tile_type][0]
         self.rect = self.image2.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.ind = 0
@@ -184,7 +196,7 @@ class Gun(pygame.sprite.Sprite):
         if self.ch_shot == 0:
             self.ch_shot = 100
             Bullet('rocket', self.x + self.w // 2,
-                   self.y + self.h // 2, 10, pos[-1], self)
+                   self.y + self.h // 2, 20, pos[-1], self)
 
 
 class Bunker(pygame.sprite.Sprite):
@@ -264,11 +276,11 @@ class Player(pygame.sprite.Sprite):
             elif event.type == pygame.KEYDOWN:
                 if self.flag1 or event.key == pygame.K_DOWN:
                     self.rect = self.rect.move(-self.vx, -self.vy)
-                    self.combus -= 0.1
+                    self.combus -= 0.2
                     self.flag1 = True
                 if self.flag or event.key == pygame.K_UP:
                     self.rect = self.rect.move(self.vx, self.vy)
-                    self.combus -= 0.1
+                    self.combus -= 0.2
                     self.flag = True
                 if pygame.sprite.spritecollideany(self, wall_group) or \
                         pygame.sprite.spritecollideany(self, inter_group):
@@ -288,28 +300,51 @@ class Player(pygame.sprite.Sprite):
                         self.position = 8 - 2
             if self.position == 0:
                 self.vx = 0
-                self.vy = -2
+                self.vy = -5
             elif self.position == 2:
-                self.vx = -2
+                self.vx = -5
                 self.vy = 0
             elif self.position == 4:
                 self.vx = 0
-                self.vy = 2
+                self.vy = 5
             elif self.position == 6:
-                self.vx = 2
+                self.vx = 5
                 self.vy = 0
+            if self.combus <= 0:
+                if self.vx != 0:
+                    if self.vx < 0:
+                        self.vx += 4
+                    if self.vx > 0:
+                        self.vx -= 4
+                if self.vy != 0:
+                    if self.vy < 0:
+                        self.vy += 4
+                    if self.vy > 0:
+                        self.vy -= 4
         if self.flag:
             self.rect = self.rect.move(self.vx, self.vy)
-            self.combus -= 0.02
+            self.combus -= 0.05
         if self.flag1:
             self.rect = self.rect.move(-self.vx, -self.vy)
-            self.combus -= 0.02
+            self.combus -= 0.05
         if pygame.sprite.spritecollideany(self, wall_group) or \
                 pygame.sprite.spritecollideany(self, inter_group):
-            if self.flag:
-                self.rect = self.rect.move(-self.vx, -self.vy)
-            if self.flag1:
-                self.rect = self.rect.move(self.vx, self.vy)
+            vx = 0
+            vy = 0
+            if self.vx < 0:
+                vx = -1
+            if self.vx > 0:
+                vx = 1
+            if self.vy < 0:
+                vy = -1
+            if self.vy > 0:
+                vy = 1
+            while pygame.sprite.spritecollideany(self, wall_group) or \
+                    pygame.sprite.spritecollideany(self, inter_group):
+                if self.flag:
+                    self.rect = self.rect.move(-vx, -vy)
+                if self.flag1:
+                    self.rect = self.rect.move(vx, vy)
         self.nx = self.rect.x + tile_width // 2
         self.ny = self.rect.y + tile_height // 2
         if self.hp == 0:
@@ -349,8 +384,8 @@ class Player(pygame.sprite.Sprite):
             self.ammun += 1
             self.points -= 500
         if self.combus < 100:
-            self.combus += 0.2
-            self.points -= 10
+            self.combus += 0.5
+            self.points -= 50
         if self.hp < 3:
             self.hp += 1
             self.points -= 100
@@ -449,6 +484,7 @@ def generate_level(level):
                 Tile('empty', x, y)
                 Bunker('bunker', x, y, data=True)
             elif level[y][x] == '@':
+                Tile('empty', x, y)
                 angar = Tile('angar', x, y)
                 Player('player', x, y)
     return
@@ -600,6 +636,7 @@ def level_choice():
                 if sp[2] is not None:
                     button_group.empty()
                     return sp[2]
+
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -882,7 +919,10 @@ def start_mission():
 
 
 button_width = button_height = tile_width = tile_height = 50
-sp_level = ['Mission01.txt']
+sp_level = ['Mission01.txt', 'Mission02.txt', 'Mission03.txt',
+            'Mission04.txt', 'Mission05.txt', 'Mission06.txt',
+            'Mission07.txt', 'Mission08.txt', 'Mission09.txt',
+            'Mission10.txt']
 if __name__ == '__main__':
     pygame.init()
     pygame.mixer.init()
@@ -891,6 +931,12 @@ if __name__ == '__main__':
     sound_explosion = pygame.mixer.Sound('data\\explosion.mp3')
     channel1 = pygame.mixer.Channel(1)
     channel2 = pygame.mixer.Channel(2)
+    channel3 = pygame.mixer.Channel(3)
+    channel4 = pygame.mixer.Channel(4)
+    channel5 = pygame.mixer.Channel(5)
+    channel6 = pygame.mixer.Channel(6)
+    channel7 = pygame.mixer.Channel(7)
+    channel8 = pygame.mixer.Channel(0)
     channel1.play(sound_peace, -1)
     size = WIDTH, HEIGHT = 800, 800
     screen = pygame.display.set_mode(size)
@@ -904,7 +950,7 @@ if __name__ == '__main__':
                    'rocket': load_image('rocket.png'),
                    'snaryad': load_image('snaryad.png'),
                    'angar': load_image('angar.png'),
-                   'data' : load_image('data.png')}
+                   'data': load_image('data.png')}
     screen.fill((125, 125, 125))
     running = True
     player = None
