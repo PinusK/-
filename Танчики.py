@@ -155,7 +155,7 @@ class InterObject(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.hp = 3
-        self.points_kill = 500
+        self.points_kill = -100
 
 
 class Gun(pygame.sprite.Sprite):
@@ -382,7 +382,7 @@ class Player(pygame.sprite.Sprite):
     def in_the_hangar(self):
         if self.ammun < 20:
             self.ammun += 1
-            self.points -= 500
+            self.points -= 300
         if self.combus < 100:
             self.combus += 0.5
             self.points -= 50
@@ -436,7 +436,7 @@ def load_text_file(filename):
 def write_text_record(record, flag=False):
     with open('data/Record.txt', 'r') as textFile:
         text = [line.strip() for line in textFile]
-    if int(text[ind_level + 2].split()[1]) < int(record):
+    if int(text[ind_level + 2].split()[1]) < abs(int(record)):
         text[ind_level + 2] = str(text[ind_level + 2].split()[0]) + '    ' + str(record)
     if flag:
         if ind_level + 1 == int(text[0].split()[-1]):
